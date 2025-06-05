@@ -1,0 +1,44 @@
+name: Create S3 Static Site
+
+on:
+  issues:
+    type:
+      -opened
+
+
+jobs:
+  deploy:
+     runs-on: ubuntu-latest
+
+     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up aws CLI
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-acess-key-id: ${{ secrets.AWS_ACCESS_KEY_ID}}
+          aws-secret-acess-key: ${{ secrets.AWS_Secret_ACCESS_KEY}}
+          aws-region: us-east-1
+      
+      - name: Extract Bucket Name from Issue
+        run: 
+        export BUCKET_NAME=$(echo "${{github.event.issue.title }}")
+        echo "Bucket Name: $BUCKET_NAME"
+        echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB`_ENV
+
+      - name: Run Terraform
+        run:
+          cd terraform
+          cd s3-static-website
+          terraform init
+          terraform aplly -auto-approve -var="bucket_name${{ env.BUCKET_NAME}}"
+
+      - name: Add comment
+        run: gh issue comment "$NUMBER" --repo "$REPO" --body "$BODY"
+        env: 
+          GitHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          Number: ${{ github.event.issue.number }}
+          Repo: ${{ github.repository }}
+          BODY: >
+            O bucket foi criado!!!
